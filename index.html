@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes, maximum-scale=5.0">
+
+  <title>Wxcafe</title>
+
+  <link rel="shortcut icon" sizes="32x32" href="images/app-icon-32.png">
+
+  <meta name="theme-color" content="#33383a">
+  <link rel="manifest" href="manifest.json">
+
+  <base href="/">
+
+  <!-- iOS -->
+  <link rel="apple-touch-icon" href="images/app-icon-144.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <meta name="apple-mobile-web-app-title" content="Wxcafes">
+
+  <style>
+    html {
+      height: 100%;
+    }
+
+    body {
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      margin: 0;
+      height: 100%;
+      background: #33383a;
+      font-family: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    vaadin-license-box {
+      display: none!important;
+    }
+
+</style>
+
+  <script src="bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+
+  <script>
+    // Register the base URL
+    const baseUrl = document.querySelector('base').href;
+
+    // Load and register pre-caching Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register(baseUrl + 'service-worker.js');
+      });
+    }
+
+  </script>
+  <noscript>
+    This page requires JavaScript
+  </noscript>
+  <link rel="import" href="src/wxcafe-app.html">
+</head>
+
+<body>
+  <wxcafe-app></wxcafe-app>
+</body>
+
+</html>

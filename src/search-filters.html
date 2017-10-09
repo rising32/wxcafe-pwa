@@ -1,0 +1,170 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/paper-input/paper-input.html">
+<link rel="import" href="../bower_components/paper-checkbox/paper-checkbox.html">
+<link rel="import" href="../bower_components/vaadin-combo-box/vaadin-combo-box.html">
+<link rel="import" href="../bower_components/vaadin-date-picker/vaadin-date-picker.html">
+<link rel="import" href="moment-js.html">
+
+<dom-module id="search-filters">
+  <template>
+    <style>
+       :host {
+        display: block;
+        padding: 0 16px;
+      }
+
+      .col {
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      .col.total,
+      .col.date {
+        display: flex;
+        align-items: flex-end;
+      }
+
+      .col span:not(.caption) {
+        padding: 0 4px 12px;
+        color: rgba(0, 0, 0, 0.3);
+      }
+
+      .date span:not(.caption) {
+        padding: 0 4px 4px;
+      }
+
+      .date vaadin-date-picker {
+        display: block;
+        flex: 1;
+      }
+
+      .col.total div[prefix] {
+        margin-right: 6px;
+      }
+
+      .col.total paper-input {
+        flex: 1;
+      }
+
+      .row {
+        margin-bottom: 16px;
+      }
+
+      .filters {
+        padding-bottom: 16px;
+      }
+
+      .status .caption {
+        display: block;
+        font-size: 12px;
+        margin: 32px 0 14px;
+        color: rgba(0, 0, 0, 0.54);
+      }
+
+      .checkboxes {
+        display: inline-block;
+        margin-left: 8px;
+      }
+
+      .checkboxes>paper-checkbox {
+        margin-right: 8px;
+      }
+
+      .title {
+        display: none;
+      }
+
+      @media (min-width: 900px) {
+        .title {
+          display: block;
+          padding: 14px 0;
+          @apply(--section-title);
+        }
+        .checkboxes,
+        .checkboxes>paper-checkbox {
+          display: block;
+        }
+        .checkboxes>paper-checkbox {
+          margin-bottom: 16px;
+        }
+        .filters {
+          padding: 0 24px;
+          position: absolute;
+          left: -308px;
+          width: 260px;
+          background: #f8f9f9;
+          height: calc(100vh - 64px);
+          box-shadow: inset -4px 0 16px -9px rgba(0, 0, 0, 0.5);
+        }
+      }
+
+    </style>
+
+    <div id="content">
+      <div class="filters">
+        <div class="title">Filter Wxcafe</div>
+
+        <div class="row">
+          <div class="date col">
+            <vaadin-date-picker id="from" auto-validate label="From" value="{{filters.start}}" max="{{filters.end}}"></vaadin-date-picker>
+            <span>–</span>
+            <vaadin-date-picker id="to" auto-validate label="To" value="{{filters.end}}" min="{{filters.start}}"></vaadin-date-picker>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div id="footer">
+      <content></content>
+    </div>
+  </template>
+
+  <script>
+    class SearchFilters extends Polymer.Element {
+      static get is() {
+        return 'search-filters';
+      }
+
+      static get properties() {
+        return {
+          filters: {
+            type: Object,
+            notify: true
+          }
+        };
+      }
+
+      ready() {
+        super.ready();
+
+        // Select all status options by default.
+        this.statusOptions.forEach(function (status) {
+          this._addStatus(status.name);
+        }.bind(this));
+      }
+
+      _addStatus(status) {
+        var statuses = this.filters.status;
+        if (statuses && statuses.indexOf(status) < 0) {
+          this.push('filters.status', status);
+        } else {
+          this.set('filters.status', [status]);
+        }
+      }
+
+      _removeStatus(status) {
+        var statusIndex = this.filters.status.indexOf(status);
+        if (this.filters.status && statusIndex >= 0) {
+          this.splice('filters.status', statusIndex, 1);
+        }
+      }
+
+      _filtersContain(name, filters) {
+        return filters && filters.base.status && filters.base.status.indexOf(name) >= 0;
+      }
+    }
+
+    window.customElements.define(SearchFilters.is, SearchFilters);
+
+  </script>
+</dom-module>

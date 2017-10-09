@@ -1,0 +1,35 @@
+{
+  "name": "Wxcafe",
+  "version": "1.0.0",
+  "description": "Sample Wxcafe demo",
+  "main": "service-worker.js",
+  "dependencies": {},
+  "devDependencies": {
+    "gulp": "^3.9.1",
+    "gulp-gh-pages": "^0.5.4",
+    "http2-push-manifest": "^1.0.0",
+    "eslint": "^3.19.0",
+    "eslint-config-google": "^0.7.0",
+    "eslint-plugin-html": "^2.0.0"
+  },
+  "scripts": {
+    "lint": "npm run lint:javascript",
+    "lint:javascript": "eslint . --ext js,html --ignore-path .gitignore",
+    "test": "polymer test",
+    "test:integration": "polymer build # test that psk builds without error with the CLI"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rising32.git"
+  },
+  "keywords": [
+    "pwa",
+    "vaadin",
+    "polymer"
+  ],
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/rising32/issues"
+  },
+  "homepage": "https://github.com/rising32#readme"
+}

@@ -1,0 +1,336 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/vaadin-grid/vaadin-grid.html">
+<link rel="import" href="../bower_components/vaadin-grid/vaadin-grid-sorter.html">
+<link rel="import" href="../bower_components/paper-fab/paper-fab.html">
+<link rel="import" href="../bower_components/iron-icons/iron-icons.html">
+<link rel="import" href="../bower_components/iron-media-query/iron-media-query.html">
+<link rel="import" href="moment-js.html">
+
+
+<style>
+  vaadin-grid thead#header {
+    padding: 0;
+    margin: 0;
+  }
+
+</style>
+
+<dom-module id="wxcafes-list">
+  <template>
+    <style>
+       :host {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        background: #fff;
+      }
+
+      #wxcafes {
+        flex: 1;
+        color: var(--primary-text-color);
+        max-height: calc(100vh - 64px);
+        border: 0;
+        height: 100%;
+      }
+
+      @media (max-width: 1124px) {
+        #wxcafes {
+          max-height: calc(100vh - 64px - 290px);
+        }
+      }
+
+      @media (max-width: 900px) {
+        #wxcafes {
+          max-height: calc(100vh - 64px - 52px);
+        }
+      }
+
+      @media (max-width: 600px) {
+        #wxcafes {
+          max-height: calc(100vh - 56px - 48px);
+        }
+      }
+
+      vaadin-grid .status {
+        text-transform: capitalize;
+      }
+
+      vaadin-grid .status-new {
+        color: var(--accent-color);
+        font-weight: 500;
+      }
+
+      vaadin-grid .status-in_progress {
+        font-weight: 500;
+        font-style: italic;
+        text-transform: capitalize;
+      }
+
+      vaadin-grid .total {
+        text-align: right;
+      }
+
+      vaadin-grid#wxcafes {
+        font-family: Roboto, sans-serif;
+        --divider-color: rgba(0, 0, 0, var(--dark-divider-opacity));
+
+        --vaadin-grid-cell: {
+          padding: 0;
+        }
+        ;
+
+        --vaadin-grid-header-cell: {
+          height: 56px;
+          color: var(--primary-text-color);
+          text-transform: uppercase;
+          font-size: 12px;
+          font-weight: 500;
+          color: rgba(0, 0, 0, 0.87);
+          padding: 0 24px 0 24px;
+        }
+        ;
+
+        --vaadin-grid-body-cell: {
+          color: rgba(0, 0, 0, var(--dark-primary-opacity));
+          font-size: 15px;
+          padding: 3px 24px;
+          cursor: pointer;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        ;
+
+        --vaadin-grid-body-row-hover-cell: {
+          background-color: var(--paper-grey-200);
+        }
+        ;
+
+        --vaadin-grid-body-row-selected-cell: {
+          background-color: var(--paper-grey-100);
+        }
+        ;
+
+        --vaadin-grid-focused-cell: {
+          box-shadow: none;
+          font-weight: bold;
+        }
+        ;
+      }
+
+      vaadin-grid#wxcafes .cell.last {
+        padding-right: 24px;
+      }
+
+      vaadin-grid#wxcafes .numeric {
+        text-align: right;
+      }
+
+      vaadin-grid#wxcafes .comment {
+        white-space: normal;
+        line-height: 1.3;
+        padding: 1em 0;
+      }
+
+      vaadin-grid-sorter {
+        margin-right: -20px;
+        height: 56px;
+      }
+
+      @media (min-width: 1125px) {
+        vaadin-grid#wxcafes {
+          --vaadin-grid-body-cell: {
+            color: rgba(0, 0, 0, var(--dark-primary-opacity));
+            font-size: 13px;
+            padding: 3px 24px;
+            cursor: pointer;
+          }
+          ;
+        }
+      }
+
+    </style>
+
+    <!-- https://github.com/Polymer/polymer/issues/2149#issuecomment-240884786 -->
+    <iron-media-query query="min-width: 1125px" query-matches="{{_largeScreen}}"></iron-media-query>
+    <vaadin-grid items="[[_filteredWxcafes]]" id="wxcafes" active-item="{{activeItem}}">
+
+      <vaadin-grid-column width="8em" frozen>
+        <template class="header">
+          <vaadin-grid-sorter path="date" direction="desc">
+            <div class="header-cell">
+              Date
+            </div>
+          </vaadin-grid-sorter>
+        </template>
+        <template>
+          [[_formatDate(item.date)]]
+        </template>
+      </vaadin-grid-column>
+
+      <vaadin-grid-column width="8em" flex-grow="2">
+        <template class="header">
+          <vaadin-grid-sorter path="merchant">
+            <div class="header-cell">
+              Merchant
+            </div>
+          </vaadin-grid-sorter>
+        </template>
+        <template>
+          [[item.merchant]]
+        </template>
+      </vaadin-grid-column>
+
+      <vaadin-grid-column width="6em">
+        <template class="header">
+          <vaadin-grid-sorter path="total" class="numeric">
+            <div class="header-cell">
+              Total
+            </div>
+          </vaadin-grid-sorter>
+        </template>
+        <template>
+          <span class="total">[[_formatTotal(item.total)]]</span>
+        </template>
+      </vaadin-grid-column>
+
+      <vaadin-grid-column width="8em">
+        <template class="header">
+          <vaadin-grid-sorter path="status">
+            <div class="header-cell">
+              Status
+            </div>
+          </vaadin-grid-sorter>
+        </template>
+        <template>
+          <span class$="status-[[item.status]] status">[[_formatStatus(item.status)]]</span>
+        </template>
+      </vaadin-grid-column>
+
+      <vaadin-grid-column width="14em" flex-grow="3">
+        <template class="header">
+          <vaadin-grid-sorter path="comment">
+            <div class="header-cell">
+              Comment
+            </div>
+          </vaadin-grid-sorter>
+        </template>
+        <template>
+          <div class="comment">[[item.comment]]</div>
+        </template>
+      </vaadin-grid-column>
+
+    </vaadin-grid>
+  </template>
+  <script>
+    class WxcafesList extends Polymer.Element {
+      static get is() {
+        return 'wxcafes-list';
+      }
+
+      static get properties() {
+        return {
+          wxcafes: Array,
+          _filteredWxcafes: {
+            type: Array,
+            value: function () {
+              return [];
+            }
+          },
+          filters: Object
+        };
+      }
+
+      static get observers() {
+        return [
+          '_update(filters, wxcafes)',
+          '_filtersChanged(filters.*)',
+          '_update(wxcafes.*)',
+          '_isLargeScreen(_largeScreen)'
+        ];
+      }
+
+      _filtersChanged() {
+        if (this.$.wxcafes.items) {
+          this._update();
+        }
+      }
+
+      _update() {
+        if (this.wxcafes === undefined) {
+          return;
+        }
+        if (!this.filters) {
+          this._filteredWxcafes = this.wxcafes;
+          return;
+        }
+
+        var merchant = this.filters.merchant;
+        var min = this.filters.min;
+        var max = this.filters.max;
+        var status = this.filters.status;
+        var start = this.filters.start;
+        var end = this.filters.end;
+
+        // Filter
+        this._filteredWxcafes = this.wxcafes
+          .filter(function (wxcafe) {
+            return !(merchant && wxcafe.merchant
+              .toUpperCase().indexOf(merchant.toUpperCase()) < 0);
+          })
+          .filter(function (wxcafe) {
+            return !(min && wxcafe.total < min);
+          })
+          .filter(function (wxcafe) {
+            return !(max && wxcafe.total > max);
+          })
+          .filter(function (wxcafe) {
+            if (status && status.length > 0) {
+              return status.indexOf(wxcafe.status) >= 0;
+            } else {
+              return false;
+            }
+          })
+          .filter(function (wxcafe) {
+            if (start) {
+              var startDate = moment(start);
+              return !!(startDate.isValid() && moment(wxcafe.date).isAfter(startDate));
+            } else {
+              return true;
+            }
+          })
+          .filter(function (wxcafe) {
+            if (end) {
+              var endDate = moment(end);
+              return !!(endDate.isValid() && moment(wxcafe.date).isBefore(endDate));
+            } else {
+              return true;
+            }
+          });
+      }
+
+      _formatTotal(total) {
+        if (total) {
+          return '$' + total.toFixed(2);
+        }
+      }
+
+      _formatStatus(status) {
+        if (status) {
+          return status.replace('_', ' ')
+        }
+      }
+
+      _formatDate(date) {
+        if (date) {
+          return moment(date).format('MM/DD/YYYY');
+        }
+      }
+
+      _isLargeScreen() {
+        this.updateStyles();
+      }
+    }
+
+    window.customElements.define(WxcafesList.is, WxcafesList);
+  </script>
+</dom-module>

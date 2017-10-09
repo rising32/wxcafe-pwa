@@ -1,0 +1,237 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/paper-toast/paper-toast.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../bower_components/app-layout/app-layout.html">
+<link rel="import" href="../bower_components/iron-icons/notification-icons.html">
+<link rel="import" href="../bower_components/iron-icon/iron-icon.html">
+<link rel="import" href="../bower_components/vaadin-pouchdb/vaadin-pouchdb.html">
+<link rel="import" href="../bower_components/polymer/lib/utils/debounce.html">
+<link rel="import" href="wxcafe-editor.html">
+<link rel="import" href="info-dialog.html">
+<link rel="import" href="content-panel.html">
+<link rel="import" href="filters-toolbar.html">
+<link rel="import" href="moment-js.html">
+
+<dom-module id="overview-page">
+  <template>
+    <style>
+       :host {
+        display: block;
+      }
+
+      app-header-layout {
+        background-color: var(--primary-background-color);
+      }
+
+      app-header {
+        background-color: var(--dark-primary-color);
+        --app-header-content: {
+          padding: 0 24px;
+        }
+      }
+
+      app-toolbar h1 {
+        color: var(--light-primary-color);
+        font-weight: 300;
+        font-size: 24px;
+        flex: inherit;
+      }
+
+      .flex {
+        flex: 1;
+      }
+
+      .content {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+      }
+
+      @media (min-width: 900px) {
+        .content {
+          /* Make room for filters panel on the left. */
+          padding-left: 308px;
+        }
+      }
+
+      @media (max-width: 1124px) {
+        .content {
+          padding-right: 0;
+        }
+      }
+
+      #content-panel {
+        flex: 1;
+      }
+
+      #sync {
+        color: var(--light-primary-color);
+        margin-left: 8px;
+        animation: spin 0.8s linear infinite;
+      }
+
+      #sync[hidden] {
+        display: none;
+        animation: none;
+      }
+
+      @keyframes spin {
+        100% {
+          transform: rotate(-360deg);
+        }
+      }
+
+      .logout-button,
+      .about-button {
+        font-size: 14px;
+        color: var(--primary-color);
+      }
+
+      @media (max-width: 600px) {
+        app-toolbar {
+          --app-toolbar-content: {
+            padding: 0 6px 0 16px;
+          }
+        }
+        app-toolbar h1 {
+          font-size: 20px;
+        }
+      }
+
+    </style>
+
+    <vaadin-pouchdb id="db" dbname="[[dbLocal]]" remote="[[dbRemote]]" data="{{wxcafes}}" status="{{status}}"
+      no-auto-save no-auto-changes></vaadin-pouchdb>
+
+    <app-header-layout fullbleed>
+      <app-header slot="header" fixed condenses>
+        <app-toolbar>
+          <h1 main-title>Wxcafe</h1>
+          <iron-icon id="sync" icon="notification:sync" hidden$="[[_hideSyncIcon(status)]]" title="Syncing…"></iron-icon>
+
+          <span class="flex"></span>
+
+          <paper-button on-tap="_showInfoDialog" class="about-button">Info</paper-button>
+          <paper-button on-tap="_logout" class="logout-button">Logout</paper-button>
+        </app-toolbar>
+      </app-header>
+
+      <div class="content">
+        <filters-toolbar id="filters-toolbar" total-owed="[[totalOwed]]" merchants="[[merchants]]"
+          filters="{{filters}}" wxcafes="[[wxcafes]]"></filters-toolbar>
+        <content-panel id="content-panel" filters="{{filters}}" wxcafes="[[wxcafes]]"></content-panel>
+      </div>
+    </app-header-layout>
+    
+  </template>
+
+  <script>
+    class OverviewPage extends Polymer.Element {
+      static get is() {
+        return 'overview-page';
+      }
+
+      static get properties() {
+        return {
+          route: Object,
+          dbLocal: String,
+          dbRemote: String,
+          showInfo: Boolean,
+          status: String,
+          wxcafes: Array,
+          totalOwed: Number,
+          merchants: Array,
+          attachments: Object,
+          filters: {
+            type: Object,
+            value: function () {
+              return {
+                start: '',
+                end: '',
+                merchant: ''
+              };
+            },
+
+            notify: true
+          }
+        };
+      }
+
+      static get observers() {
+        return [
+          '_getUniqueMerchants(wxcafes.*)',
+          '_calculateTotal(wxcafes.*)',
+          '_dbNameChanged(dbLocal, dbRemote)'
+        ];
+      }
+
+      ready() {
+        super.ready();
+        setTimeout(() => {
+          // Workaround app layout bugs
+          const headerPanel = this.shadowRoot.querySelector('app-header-layout');
+          headerPanel.$.wrapper.style.height = '100%';
+          headerPanel.$.contentContainer.style.height = '100%';
+          // headerPanel.$.contentContainer.style.zIndex = '3';
+          headerPanel.resetLayout();
+        }, 0);
+      }
+
+      _dbNameChanged() {
+        Polymer.RenderStatus.afterNextRender(this, () => {
+          this.$.db.changes(() => this._update());
+          this._update();
+          window.db = this.$.db;
+        });
+      }
+
+      _calculateTotal() {
+        if (this.wxcafes) {
+          var total = this.wxcafes.filter(function (exp) {
+            return exp.status === 'new';
+          }).map(function (exp) {
+            return exp.total;
+          })
+            .reduce(function (a, b) {
+              return a + b;
+            }, 0);
+          this.totalOwed = '$' + total.toFixed(2);
+        }
+      }
+
+      _showInfoDialog() {
+        this.showInfo = false;
+        this.showInfo = true;
+      }
+
+      _getUniqueMerchants() {
+        if (this.wxcafes) {
+          this.merchants = this.wxcafes
+            .map(e => e.merchant)
+            .filter((val, index, self) => self.indexOf(val) === index);
+        }
+      }
+
+      _update() {
+        this._debouncer = Polymer.Debouncer.debounce(this._debouncer,
+          Polymer.Async.timeOut.after(250),
+          () => {
+            console.log(`Update called()`);
+            this.$.db.query();
+          });
+      }
+
+      _hideSyncIcon() {
+        return this.status !== 'syncing';
+      }
+
+      _logout() {
+        this.dispatchEvent(new CustomEvent('log-out', {
+          bubbles: true,
+          composed: true
+        }));
+      }
+    }
+    window.customElements.define(OverviewPage.is, OverviewPage);
+  </script>
+</dom-module>

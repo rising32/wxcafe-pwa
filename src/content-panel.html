@@ -1,0 +1,34 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="wxcafes-list.html">
+<dom-module id="content-panel">
+  <template>
+    <style>
+       :host {
+        display: flex;
+        height: 100%;
+      }
+
+      #list {
+        flex: 1;
+        height: 100%;
+      }
+    </style>
+    <wxcafes-list id="list" wxcafes="[[wxcafes]]" filters="[[filters]]"></wxcafes-list>
+  </template>
+  <script>
+    class ContentPanel extends Polymer.Element {
+      static get is() {
+        return 'content-panel';
+      }
+
+      static get properties() {
+        return {
+          wxcafes: Array,
+          filters: Object
+        };
+      }
+    }
+    window.customElements.define(ContentPanel.is, ContentPanel);
+
+  </script>
+</dom-module>

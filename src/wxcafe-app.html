@@ -1,0 +1,216 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/iron-pages/iron-pages.html">
+<link rel="import" href="../bower_components/polymer/lib/utils/flattened-nodes-observer.html">
+<link rel="import" href="../bower_components/app-route/app-route.html">
+<link rel="import" href="../bower_components/app-route/app-location.html">
+<link rel="import" href="../bower_components/iron-ajax/iron-ajax.html">
+<link rel="import" href="../bower_components/iron-localstorage/iron-localstorage.html">
+<link rel="import" href="../bower_components/paper-toast/paper-toast.html">
+<link rel="import" href="../bower_components/lazy-imports/lazy-imports-mixin.html">
+<link rel="import" href="login-page.html">
+
+<dom-module id="wxcafe-app">
+  <link rel="lazy-import" group="overview" href="overview-page.html">
+
+  <template>
+    <style>
+       :host {
+        display: block;
+      }
+
+      #pages,
+      #pages>* {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+      }
+
+       :host>* {
+        --dark-primary-color: #33383a;
+        --primary-color: #00b4f0;
+        --light-primary-color: #F2FAF9;
+        --text-primary-color: #FFFFFF;
+        --accent-color: #ff3a39;
+        --light-accent-color: #F2FAF9;
+        --primary-text-color: rgba(0, 0, 0, 0.87);
+        --secondary-text-color: #727272;
+        --primary-background-color: #FFFFFF;
+        --disabled-text-color: #BDBDBD;
+        --divider-color: #B6B6B6;
+        --paper-menu-background-color: #fff;
+        --menu-link-color: #111111;
+        --paper-input-container-underline: {
+          background: #dbdbdb;
+        }
+        --paper-header-panel-shadow: {
+          display: none;
+        }
+        --paper-header-panel-standard-container: {
+          overflow: visible;
+        }
+        --vaadin-upload-button-add: {
+          background: transparent;
+          color: var(--primary-color);
+          box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 1px 5px 0 rgba(0, 0, 0, 0.12), 0 3px 1px -2px rgba(0, 0, 0, 0.2);
+        }
+        --vaadin-upload-buttons-primary: {
+          flex-direction: column;
+          align-items: center;
+        }
+        --section-title: {
+          font-weight: 400;
+          font-size: 13px;
+          display: block;
+          border-bottom: 1px solid rgba(0, 0, 0, 0.13);
+          padding-bottom: 6px;
+          margin-bottom: 18px;
+          margin-top: 4px;
+          color: rgba(0, 0, 0, 0.54);
+        }
+        iron-overlay-backdrop {
+          --iron-overlay-backdrop-background-color: #33383A;
+        }
+
+        --paper-input-container-underline: {
+          border-color: rgba(0, 0, 0, 0.2);
+        }
+      }
+
+    </style>
+
+    <app-location route="{{route}}"></app-location>
+    <app-route route="{{route}}" pattern=":id" data="{{routeData}}" tail="{{subroute}}"></app-route>
+    <iron-ajax id="ajax" handle-as="json" on-response="_handleBackendResponse" on-error="_handleBackendError"></iron-ajax>
+    <iron-localstorage name="wxcafe-manager-db-id" value="{{_dbId}}"></iron-localstorage>
+    <iron-localstorage name="wxcafe-manager-db-remote" value="{{_dbRemote}}"></iron-localstorage>
+    <iron-localstorage name="wxcafe-manager-autologin" value="{{_autoLogin}}"></iron-localstorage>
+
+    <iron-pages id="pages" selected="[[_selected]]" selected-attribute="active">
+      <login-page id="login" on-log-in="_logIn"></login-page>
+      <overview-page id="overview" on-log-out="_logOut" db-local="[[_dbLocal]]" db-remote="[[_dbRemote]]"
+        show-info="[[_showInfo]]"></overview-page>
+    </iron-pages>
+
+    <paper-toast id="networkStatus"></paper-toast>
+  </template>
+
+  <script>
+    class WxcafeApp extends Polymer.LazyImportsMixin(Polymer.Element) {
+      static get is() {
+        return 'wxcafe-app'
+      };
+
+      static get observers() {
+        return ['_onLoginChanged(_loggedIn)'];
+      };
+
+      ready() {
+        super.ready();
+        this.baseHref = document.querySelector('base').getAttribute('href');
+        Polymer.RenderStatus.afterNextRender(this, () => {
+          window.addEventListener('online', this._networkStatusMessage.bind(this));
+          window.addEventListener('offline', this._networkStatusMessage.bind(this));
+          this._setupDB();
+          setTimeout(() => this.importLazyGroup('overview'), 2000);
+        });
+      }
+
+      _logIn() {
+        this._autoLogin = true;
+        // setup sets the _loggedIn flag appropriatelly
+        this._setupDB();
+      }
+
+      _logOut() {
+        this.routeData.id = null;
+        this._autoLogin = this._loggedIn = false;
+        this._dbSetupComplete = false;
+      }
+
+      _onLoginChanged(login) {
+        Polymer.RenderStatus.afterNextRender(this, () => {
+          if (!login) {
+            this._setupDB();
+          }
+          if (login !== undefined) {
+            this._selected = login ? 1 : 0;
+            this.set('route.path', (login ? this.baseHref + this._dbId : this.baseHref));
+          }
+        });
+      }
+
+      _setupDB() {
+        if (this._dbSetupComplete === true) {
+          return;
+        }
+
+        var id = this.routeData.id;
+        if (!id && !this._autoLogin) {
+          this._loggedIn = false;
+          return;
+        }
+        if (id && this._dbLocal && this._dbId !== id) {
+          // User wants to change their ddbb because URL changed
+          this._dbId = this._dbLocal = this._dbRemote
+        } else if (!id && this._dbId) {
+          // Re-use the saved ddbb
+          id = this._dbId;
+        }
+        if (id) {
+          // Check that ddbb still exists in the server
+          this.$.ajax.url = 'https://wxcafe-demo/api/db/' + id;
+        } else {
+          // Create a new ddbb in server with new demo data
+          this.$.ajax.url = 'https://wxcafe-demo/api/create';
+        }
+
+        this._dbSetupComplete = true;
+        this.$.ajax.generateRequest();
+        this.importLazyGroup('overview');
+      }
+
+      _handleBackendResponse(evt) {
+        var rsp = evt.detail.response;
+        if (rsp && rsp.backend_db_id) {
+          // ddbb in server is correct
+          this._dbId = rsp.backend_db_id;
+          this._dbLocal = 'db_' + this._dbId;
+          this.set('route.path', this.baseHref + this._dbId);
+          this._dbRemote = rsp.couchdb_db_url;
+          this._loggedIn = true;
+          // ddbb was just created
+          this._showInfo = rsp.new_db;
+        } else {
+          // ddbb does not exist anymore
+          this._dbId = null;
+          this._setupDB();
+        }
+      }
+
+      _handleBackendError(e, d) {
+        if (this._dbId && this._dbRemote) {
+          // We can work offline and have a local instance of the ddbb.
+          this._dbLocal = 'db_' + this._dbId;
+          this._loggedIn = true;
+        } else {
+          // Network failure and we dont have local any ddbb yet to work offline
+          this._dbId = null;
+          this._networkStatusMessage(null, 'Experiencing some issues, try again in a bit.');
+          this.$.networkStatus.opened = true;
+        }
+      }
+
+      // Show a toast with network status. We migh have a paper-badge for this.
+      _networkStatusMessage(e, text) {
+        text = text ? text : navigator.onLine ? 'online' : 'offline';
+        this.$.networkStatus.opened = false;
+        this.$.networkStatus.text = 'Network is ' + text;
+        this.$.networkStatus.opened = true;
+      }
+    }
+
+    window.customElements.define(WxcafeApp.is, WxcafeApp);
+  </script>
+</dom-module>
